@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <vector>
+#include <cstdint>
 
 using namespace std;
 
@@ -22,19 +23,21 @@ namespace ASCIICHIS {
         int wrap_mode = 0; // 0 = Do Nothing, 1 = Wrap, 2 = Error
 
         struct color {
-            unsigned char r, g, b;
-            color() : r(0), g(0), b(0) {}
-            color(unsigned char r, unsigned char g, unsigned char b) : r(r), g(g), b(b) {}
+            float r, g, b;
+            wchar_t d_char;
+            color() : r(0), g(0), b(0), d_char(L'@') {}
+            color(float r, float g, float b, wchar_t d_char) : r(r), g(g), b(b), d_char(d_char) {}
+
+            ulong bytes();
         };
 
         asciirenderer();
 
-        static int bytetocol(ulong out_col, color &channels, char* drawchar);
-        static ulong coltobyte(color channels, const char* drawchar);
+        static int bytetocol(ulong out_col, uint8_t &r, uint8_t &g, uint8_t &b, char* drawchar);
 
-        int setpix(int x, int y, ulong col);
+        int setpix(int x, int y, ulong col_bytes);
+        int setpix(int x, int y, color col);
         ulong getpix(int x, int y);
-        int drawbox(int x1, int y1, int x2, int y2, int col);
 
         int pushscreen();
         int flushscreen();

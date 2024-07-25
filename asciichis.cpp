@@ -44,10 +44,10 @@ namespace ASCIICHIS {
         printf("\033[?25l");
     }
 
-    int asciirenderer::bytetocol(ulong out_col, color &channels, char* drawchar) {
-        channels.r = (unsigned char)(out_col & 0xFF);
-        channels.g = (unsigned char)((out_col >> 8) & 0xFF);
-        channels.b = (unsigned char)((out_col >> 16) & 0xFF);
+    int asciirenderer::bytetocol(ulong out_col, uint8_t &r, uint8_t &g, uint8_t &b, char* drawchar) {
+        r = (unsigned char)(out_col & 0xFF);
+        g = (unsigned char)((out_col >> 8) & 0xFF);
+        b = (unsigned char)((out_col >> 16) & 0xFF);
 
         drawchar[0] = (char)((out_col >> 32) & 0xFF);
         drawchar[1] = (char)((out_col >> 40) & 0xFF);
@@ -56,42 +56,38 @@ namespace ASCIICHIS {
         return 0;
     }
 
-    ulong asciirenderer::coltobyte(color channels, const char *drawchar) {
+    ulong asciirenderer::color::bytes() {
         ulong retlong = 0;
 
         // ITS ALL BYTES BATMAN -Joker
-        memcpy(&retlong, drawchar, 4);
+        memcpy(&retlong, reinterpret_cast<const void *>(&d_char), 2);
 
         retlong <<= 16;
-        retlong |= channels.b;
+        retlong |= static_cast<uint8_t>(b*255);
         retlong <<= 8;
-        retlong |= channels.g;
+        retlong |= static_cast<uint8_t>(g*255);
         retlong <<= 8;
-        retlong |= channels.r;
+        retlong |= static_cast<uint8_t>(r*255);
 
         return retlong;
     }
 
-    int asciirenderer::setpix(int x, int y, ulong col) {
+    int asciirenderer::setpix(int x, int y, ulong col_bytes) {
         if (x < 0 || x >= width || y < 0 || y >= height)
             return 1;
-        vram[idxfromcoord(x, y)] = col;
+        vram[idxfromcoord(x, y)] = col_bytes;
+        return 0;
+    }
+
+    int asciirenderer::setpix(int x, int y, asciirenderer::color col) {
+        if (x < 0 || x >= width || y < 0 || y >= height)
+            return 1;
+        vram[idxfromcoord(x, y)] = col.bytes();
         return 0;
     }
 
     ulong asciirenderer::getpix(int x, int y) {
         return vram[idxfromcoord(x, y)];
-    }
-
-    int asciirenderer::drawbox(int x1, int y1, int x2, int y2, int col) {
-        for (int x = x1; x < x2; x++) {
-            //float xPerc = (float)(x-x1) / (float)(x2-x1);
-            for (int y = y1; y < y2; y++) {
-                //float yPerc = (float)(y-y1) / (float)(y2-y1);
-                setpix(x, y, col);
-            }
-        }
-        return 0;
     }
 
     int asciirenderer::idxfromcoord(int x, int y) {
@@ -114,18 +110,16 @@ namespace ASCIICHIS {
 
     int asciirenderer::pushscreen() {
         int ctr = 0;
-        color channels;
+        uint8_t r, g, b;
         char drawchar[4] = "█";
         string text = "";
         for (int i = 0; i < width*height; i++) {
-            bytetocol(vram[i], channels, drawchar);
-            //printf("\033[38;2;%d;%d;%dm@", r, g, b);
-            //text += "\033[48;2;"+to_string(r)+";"+to_string(g)+";"+to_string(b)+
-            //        ";38;2;"+to_string(r)+";"+to_string(g)+";"+to_string(b)+"m@";
+            bytetocol(vram[i], r, g, b, drawchar);
+
             if (drawchar[0] == 0x00 && drawchar[1] == 0x00 && drawchar[2] == 0x00 && drawchar[3] == 0x00)
                 text += "\033[49;39m ";
             else
-                text += "\033[49;38;2;"+to_string(channels.r)+";"+to_string(channels.g)+";"+to_string(channels.b)+"m" + drawchar;
+                text += "\033[49;38;2;"+to_string(r)+";"+to_string(g)+";"+to_string(b)+"m" + drawchar;
         }
 
         //cout << "\033[2J\033[1;1H";
